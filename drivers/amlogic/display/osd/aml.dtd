@@ -9,7 +9,7 @@
 		dev_name = "mesonfb";
 		status = "okay";
 		reserve-memory = <0x01800000 0x00100000>;
-		vmode = <0>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
-		display_size_default = <1280 720 1280 1440 32>;  // osd0:8M, osd1:1m  1280*720*4*3 = 11,059,200
+		vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
+		display_size_default = <1024 768 1024 1536 32>;
 	};
 #endif
