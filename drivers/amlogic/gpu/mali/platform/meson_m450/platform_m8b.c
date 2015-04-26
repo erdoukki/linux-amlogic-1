@@ -33,9 +33,9 @@
  */
 
 #define CFG_PP 2
-#define CFG_CLOCK 3
-#define CFG_MIN_PP 1
-#define CFG_MIN_CLOCK 0
+#define CFG_CLOCK 4
+#define CFG_MIN_PP 2
+#define CFG_MIN_CLOCK 4
 
 /* fclk is 2550Mhz. */
 #define FCLK_DEV3 (6 << 9)		/*	850   Mhz  */
@@ -64,7 +64,7 @@ static mali_dvfs_threshold_table mali_dvfs_table[]={
 		{ 1, 1, 5, 152, 205}, /* for 364  */
 		{ 2, 2, 5, 180, 212}, /* for 425  */
 		{ 3, 3, 5, 205, 236}, /* for 510  */
-		{ 4, 4, 5, 230, 255}, /* for 637  */
+		{ 4, 4, 5, 230, 256}, /* for 637  */
 		{ 0, 0, 5,   0,   0}
 };
 
@@ -79,8 +79,8 @@ static mali_plat_info_t mali_plat_data = {
 	.cfg_min_clock = CFG_MIN_CLOCK,
 
 	.sc_mpp = 2, /* number of pp used most of time.*/
-	.bst_gpu = 210, /* threshold for boosting gpu. */
-	.bst_pp = 160, /* threshold for boosting PP. */
+	.bst_gpu = 1, /* threshold for boosting gpu. */
+	.bst_pp = 1, /* threshold for boosting PP. */
 
 	.clk = mali_dvfs_clk, /* clock source table. */
 	.clk_sample = mali_dvfs_clk_sample, /* freqency table for show. */
@@ -170,7 +170,7 @@ static u32 get_limit_mali_freq(void)
 {
 	return mali_plat_data.scale_info.maxclk;
 }
-#if 0
+
 static u32 set_limit_pp_num(u32 num)
 {
 	u32 ret = -1;
@@ -185,14 +185,13 @@ static u32 set_limit_pp_num(u32 num)
 quit:
 	return ret;
 }
-#endif
+
 void mali_gpu_utilization_callback(struct mali_gpu_utilization_data *data);
 int mali_meson_init_start(struct platform_device* ptr_plt_dev)
 {
 	struct mali_gpu_device_data* pdev = ptr_plt_dev->dev.platform_data;
 
 	/* for mali platform data. */
-	pdev->utilization_interval = 200,
 	pdev->utilization_callback = mali_gpu_utilization_callback,
 
 	/* for resource data. */
@@ -203,8 +202,31 @@ int mali_meson_init_start(struct platform_device* ptr_plt_dev)
 
 int mali_meson_init_finish(struct platform_device* ptr_plt_dev)
 {
+#ifdef CONFIG_GPU_THERMAL
+	int err;
+	struct gpufreq_cooling_device *gcdev = NULL;
+#endif
 	if (mali_core_scaling_init(&mali_plat_data) < 0)
 		return -1;
+
+#ifdef CONFIG_GPU_THERMAL
+	gcdev = gpufreq_cooling_alloc();
+	if(IS_ERR(gcdev))
+		printk("malloc gpu cooling buffer error!!\n");
+	else if(!gcdev)
+		printk("system does not enable thermal driver\n");
+	else {
+		gcdev->get_gpu_freq_level = get_mali_freq_level;
+		gcdev->get_gpu_max_level = get_mali_max_level;
+		gcdev->set_gpu_freq_idx = set_limit_mali_freq;
+		gcdev->get_gpu_current_max_level = get_limit_mali_freq;
+		err = gpufreq_cooling_register(gcdev);
+		if(err < 0)
+			printk("register GPU  cooling error\n");
+		printk("gpu cooling register okay with err=%d\n",err);
+	}
+
+#endif
 	return 0;
 }
 
@@ -333,10 +355,6 @@ int mali_light_resume(struct device *device)
 int mali_deep_suspend(struct device *device)
 {
 	int ret = 0;
-	struct mali_pmu_core *pmu;
-
-	mali_pm_statue = 1;
-	pmu = mali_pmu_get_global_pmu_core();
 	enable_clock();
 	flush_scaling_job();
 
@@ -353,31 +371,7 @@ int mali_deep_resume(struct device *device)
 	/* clock scaling up. Kasin.. */
 	enable_clock();
 	ret = mali_clock_critical(mali_cri_deep_resume, (size_t)device);
-	mali_pm_statue = 0;
 	return ret;
+
 }
 
-void mali_post_init(void)
-{
-#ifdef CONFIG_GPU_THERMAL
-	int err;
-	struct gpufreq_cooling_device *gcdev = NULL;
-
-	gcdev = gpufreq_cooling_alloc();
-	if(IS_ERR(gcdev))
-		printk("malloc gpu cooling buffer error!!\n");
-	else if(!gcdev)
-		printk("system does not enable thermal driver\n");
-	else {
-		gcdev->get_gpu_freq_level = get_mali_freq_level;
-		gcdev->get_gpu_max_level = get_mali_max_level;
-		gcdev->set_gpu_freq_idx = set_limit_mali_freq;
-		gcdev->get_gpu_current_max_level = get_limit_mali_freq;
-		err = gpufreq_cooling_register(gcdev);
-		if(err < 0)
-			printk("register GPU  cooling error\n");
-		printk("gpu cooling register okay with err=%d\n",err);
-	}
-
-#endif
-}

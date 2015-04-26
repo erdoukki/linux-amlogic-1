@@ -46,7 +46,7 @@ _mali_osk_errcode_t ump_kernel_constructor(void)
 	/* Perform OS Specific initialization */
 	err = _ump_osk_init();
 	if (_MALI_OSK_ERR_OK != err) {
-		MSG_ERR(("Failed to initiaze the UMP Device Driver"));
+		//MSG_ERR(("Failed to initiaze the UMP Device Driver"));
 		return err;
 	}
 
@@ -56,7 +56,7 @@ _mali_osk_errcode_t ump_kernel_constructor(void)
 	/* Create the descriptor map, which will be used for mapping secure ID to ump_dd_mem structs */
 	device.secure_id_map = ump_random_mapping_create();
 	if (NULL == device.secure_id_map) {
-		MSG_ERR(("Failed to create secure id lookup table\n"));
+		//MSG_ERR(("Failed to create secure id lookup table\n"));
 		return _MALI_OSK_ERR_NOMEM;
 	}
 

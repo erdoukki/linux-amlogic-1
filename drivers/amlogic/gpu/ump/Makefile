@@ -8,21 +8,22 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-# Skip this Makefile when included from modpost
-ifeq ($(KBUILD_EXTMOD),)
-
 # For each arch check: CROSS_COMPILE , KDIR , CFLAGS += -DARCH
 
 export ARCH ?= arm
 BUILD ?= debug
 
-TARGET_PLATFORM ?= aml-meson
-CONFIG ?= aml-meson-m400-1
-BUILD ?= debug
+check_cc2 = \
+	$(shell if $(1) -S -o /dev/null -xc /dev/null > /dev/null 2>&1; \
+	then \
+		echo "$(2)"; \
+	else \
+		echo "$(3)"; \
+	fi ;)
 
 # Check that required parameters are supplied.
 ifeq ($(CONFIG),)
-$(error "CONFIG must be specified.")
+CONFIG := default
 endif
 ifeq ($(CPU)$(KDIR),)
 $(error "KDIR or CPU must be specified.")
@@ -35,8 +36,8 @@ endif
 KDIR-$(shell uname -m):=/lib/modules/$(shell uname -r)/build
 
 ifeq ($(ARCH), arm)
-	# when compiling for ARM we're cross compiling
-	export CROSS_COMPILE ?= arm-none-linux-gnueabi-
+# when compiling for ARM we're cross compiling
+export CROSS_COMPILE ?= $(call check_cc2, arm-linux-gnueabi-gcc, arm-linux-gnueabi-, arm-none-linux-gnueabi-)
 endif
 
 # look up KDIR based om CPU selection
@@ -64,5 +65,3 @@ kernelrelease:
 clean:
 	$(MAKE) -C $(KDIR) M=$(CURDIR) clean
 	$(MAKE) -C $(KDIR) M=$(CURDIR)/../mali clean
-
-endif
